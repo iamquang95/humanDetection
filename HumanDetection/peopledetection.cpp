@@ -244,7 +244,7 @@ void runTest(const map< string, vector<Rect> >& ds, Evaluator& e) {
 		//resize(img, img, Size(cap.get(CV_CAP_PROP_FRAME_WIDTH), cap.get(CV_CAP_PROP_FRAME_HEIGHT)), 0, 0, INTER_CUBIC);
 		imshow("video capture", img);
 		if (waitKey(20) >= 0) break;
-		q.push(img.clone());
+		//q.push(img.clone());
 		clock_t end = clock();
 		cout << getTime(start, end) << endl;
 
@@ -305,17 +305,16 @@ int main(int argc, const char * argv[]) {
 
 	conf.init();
 	//conf.debug();
-	namedWindow(name);
 	
-	//thread tt (runT, "E:/VIDEO/Caltech/annotations.txt");
-	runT("E:/VIDEO/ETHZ/annotations.txt");
-	show();
-	//tt.join();
-	return 0;
+	if (conf.isEvaluated()) {
+		runT(conf.getEvaluate());
+	} else {
+		namedWindow(name);
 
-	thread pr (proc);	
-	show();
-	
-	pr.join();
+		thread pr (proc);	
+		show();
+		
+		pr.join();
+	}
 	return 0;
 }

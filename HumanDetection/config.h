@@ -32,6 +32,7 @@ struct Config {
 	static const string STEP;
 	static const string FPS;
 	static const string OUTPUT;
+	static const string EVALUATE;
 		
 	map<string, string> config;
 	int width = 640;
@@ -42,6 +43,7 @@ struct Config {
 	string detector = "DEFAULT_DETECTOR";
 	string tracker = "DEFAULT_TRACKER";
 	string output = "NONE";
+	string evaluate = "NONE";
 	
 	bool checkConfig(string key){
 		return config.find(key) != config.end();
@@ -71,6 +73,9 @@ struct Config {
 
 		if (checkConfig(OUTPUT))
 			output = config[OUTPUT];
+
+		if (checkConfig(EVALUATE))
+			evaluate = config[EVALUATE];
 	}
 
 
@@ -127,9 +132,17 @@ struct Config {
 	string getOutput(){
 		return output;
 	}
+
+	string getEvaluate() {
+		return evaluate;
+	}
+
+	bool isEvaluated() {
+		return evaluate != "NONE";
+	}
 	
 	bool isOutput(){
-		return output!="NONE";
+		return output != "NONE";
 	}
 	
 	Detector* getDetector(){
@@ -168,5 +181,6 @@ const string Config::TRACKER = "TRACKER";
 const string Config::STEP = "STEP";
 const string Config::FPS = "FPS";
 const string Config::OUTPUT = "OUTPUT";
+const string Config::EVALUATE = "EVALUATE";
 
 #endif
