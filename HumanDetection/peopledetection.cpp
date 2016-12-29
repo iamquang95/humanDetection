@@ -9,6 +9,7 @@
 #include <condition_variable>
 #include <chrono>
 #include "config.h"
+#include "Evaluator.h"
 
 using namespace std;
 using namespace cv;
@@ -192,6 +193,105 @@ void help(){
 	cout << message;
 }
 
+void runTest(const map< string, vector<Rect> >& ds, Evaluator& e) {
+	namedWindow("video capture");
+	Mat img, preImg;	
+	Detector* detector = conf.getDetector();
+	Tracker* tracker = conf.getTracker();
+
+	vector<Rect> found_filtered;
+	int step = 0;
+	for(const auto &p: ds) {
+		clock_t start = clock();		
+		img = imread(p.first, CV_LOAD_IMAGE_COLOR);
+	
+		resize(img, img, Size(conf.getWidth(), conf.getHeight()), 0, 0, INTER_CUBIC);
+		//cout << img.cols << " " << img.rows << endl;
+		if (!img.data)
+			continue;
+
+		if (step%conf.getStep() == 0) {
+			found_filtered = detector->detect(img);			
+		}
+		else {
+			if (step%conf.getStep() == 1)
+				tracker->startDetect();
+			found_filtered = tracker->detect(preImg, img, found_filtered);
+		}
+		
+		cout << p.first << " " << found_filtered.size() << " " << p.second.size() << endl;
+		e.update(found_filtered, p.second);
+		e.debug();
+		for (size_t i = 0; i < found_filtered.size(); i++) {			
+			Rect r = found_filtered[i];
+			cout << r.tl() << " " << r.width << " " << r.height << endl;
+			r.x += cvRound(r.width * 0.1);
+			r.width = cvRound(r.width * 0.8);
+			r.y += cvRound(r.height * 0.06);
+			r.height = cvRound(r.height * 0.9);
+			rectangle(img, r.tl(), r.br(), cv::Scalar(0, 255, 0), 2);
+		}
+		
+		for (size_t i = 0; i < p.second.size(); i++) {			
+			Rect r = p.second[i];
+			cout << r.tl() << " " << r.width << " " << r.height << endl;
+			//r.x += cvRound(r.width * 0.1);
+			//r.width = cvRound(r.width * 0.8);
+			//r.y += cvRound(r.height * 0.06);
+			//r.height = cvRound(r.height * 0.9);
+			rectangle(img, r.tl(), r.br(), cv::Scalar(255, 0, 0), 2);
+		}
+		//resize(img, img, Size(cap.get(CV_CAP_PROP_FRAME_WIDTH), cap.get(CV_CAP_PROP_FRAME_HEIGHT)), 0, 0, INTER_CUBIC);
+		imshow("video capture", img);
+		if (waitKey(20) >= 0) break;
+		q.push(img.clone());
+		clock_t end = clock();
+		cout << getTime(start, end) << endl;
+
+		preImg = img;		
+		step++;
+	}
+	stop = true;
+	q.push(preImg);
+	delete detector;	
+}
+
+vector< map< string, vector<Rect> > > readTest(string name){
+	ifstream fi(name);
+	string line;
+	map< string, vector<Rect> > cur;
+	vector< map< string, vector<Rect> > > result;
+	while (getline(fi, line)){
+		if (line == ""){
+			result.push_back(cur);
+			cur.clear();
+			continue;
+		}
+		
+		stringstream ss(line);
+		string f; ss >> f;
+		int n; ss >> n;
+		vector<Rect> boxes;
+		for(int i = 0; i < n; ++i){
+			int x, y, width, height;
+			ss >> x >> y >> width >> height;
+			boxes.push_back( Rect(x,y,width,height) );
+		}
+		cur[f] = boxes;		
+	}
+	
+	if (!cur.empty())
+		result.push_back(cur);
+	return result;
+}
+
+void runT(string name){
+	Evaluator e;
+	vector< map< string, vector<Rect> > > videos = readTest(name);
+	for(const map< string, vector<Rect> >& video: videos)
+		runTest(video, e);
+}
+
 //createsamples -vec samples.vec -w 30 -h 73
 int main(int argc, const char * argv[]) {
 	for(int i = 1; i < argc; ++i){
@@ -206,6 +306,12 @@ int main(int argc, const char * argv[]) {
 	conf.init();
 	//conf.debug();
 	namedWindow(name);
+	
+	//thread tt (runT, "E:/VIDEO/Caltech/annotations.txt");
+	runT("E:/VIDEO/ETHZ/annotations.txt");
+	show();
+	//tt.join();
+	return 0;
 
 	thread pr (proc);	
 	show();

@@ -108,11 +108,11 @@ if __name__ == '__main__':
     num = [2, 3]
 
     time_flag = time.time()
-    img_save_path = os.path.join(dir_path, phase + 'images')
+    img_save_path = os.path.join(dir_path, phase + 'images/')
     #anno_save_path = os.path.join(dir_path, phase + 'annotations.pkl')
     anno_save_path = os.path.join(dir_path, phase + 'annotations.txt')
-    negative_path = 'E:/VIDEO/oxbuild_images/'
-    negative_save_path = os.path.join(dir_path, 'negative.txt')
+    # negative_path = 'E:/VIDEO/oxbuild_images/'
+    # negative_save_path = os.path.join(dir_path, 'negative.txt')
     ok = True
     if os.path.exists(img_save_path):
         # raise KeyError('Already exists : {}'.format(img_save_path))
@@ -123,20 +123,23 @@ if __name__ == '__main__':
     print 'Annotations will be saved to {}'.format(anno_save_path)
 
     #  convert .seq file into .jpg
-    if ok: 
-        for i in range(num[0], num[1]):
-            img_set_path = os.path.join(dir_path, 'set{:02}'.format(i))
-            assert os.path.exists(img_set_path), 'Not exists: '.format(img_set_path)
-            print 'Extracting images from set{:02} ...'.format(i)
-            for j in sorted(os.listdir(img_set_path)):
-                imgs_path = os.path.join(img_set_path, j)
-                imgs = read_seq(imgs_path)
-                for ix, img in enumerate(imgs):
-                    img_name = 'img{:02}{}{:04}.jpg'.format(i, j[2:4], ix)
-                    img_path = os.path.join(img_save_path, img_name)
+    have = set()
+    for i in range(num[0], num[1]):
+        img_set_path = os.path.join(dir_path, 'set{:02}'.format(i))
+        assert os.path.exists(img_set_path), 'Not exists: '.format(img_set_path)
+        print 'Extracting images from set{:02} ...'.format(i)
+        for j in sorted(os.listdir(img_set_path)):
+            imgs_path = os.path.join(img_set_path, j)
+            imgs = read_seq(imgs_path)
+            print imgs_path
+            for ix, img in enumerate(imgs):
+                img_name = 'img{:02}{}{:04}.jpg'.format(i, j[2:4], ix)
+                img_path = os.path.join(img_save_path, img_name)                
+                have.add(img_path)
+                if not os.path.isfile(img_path):
                     open(img_path, 'wb+').write(img)
 
-        print 'Images have been saved.'
+    print 'Images have been saved.'
 
     # convert .vbb file into .pkl
     # example: anno['00']['00']['frames'][0][0]['pos']
@@ -157,22 +160,38 @@ if __name__ == '__main__':
         cPickle.dump(anno, f)
     """
     
+    already = set()
+    
     with open(anno_save_path,'w') as f:
+        out = []
         for dataset, dataset_dict in anno.iteritems():
             for video, video_dict in dataset_dict.iteritems():
                 for frame_id, frame_data in video_dict['frames'].iteritems():
                     s = dir_path + 'images/img{}{}{:04}.jpg'.format(dataset, video, frame_id)
                     
-                    s = s + ' ' + str(len(frame_data))
+                    have.discard(s)
+                    s = s + ' ' + str(len(frame_data))                    
                     for box in frame_data:
                         pos = box['pos']
                         s = s + ' {} {} {} {}'.format(int(pos[0]), int(pos[1]), int(pos[2]), int(pos[3]))
                     
-                    f.write('%s\n' % s)
+                    out.append(s)
+                    # f.write('%s\n' % s)
                     
+        for s in have:
+            out.append(s+' 0')
+            
+        out = sorted(out)
+        for i, s in enumerate(out):
+            if i!=0 and '0000.jpg' in s:
+                f.write('\n')
+            f.write('%s\n' % s)
+                    
+    """
     with open(negative_save_path, 'w') as f:
         for k in os.listdir(negative_path):
             f.write('{}{}\n'.format(negative_path,k))
+    """
 
     print 'Annotations have been saved.'
 
